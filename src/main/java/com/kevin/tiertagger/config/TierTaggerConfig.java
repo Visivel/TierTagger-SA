@@ -33,11 +33,12 @@ public class TierTaggerConfig implements Serializable {
      * <p>the field was renamed to do a little trolling and force it setting to the default value in players' config</p>
      * <p>previous name(s): {@code apiUrl}</p>
      */
-    private String baseUrl = "https://api.uku3lig.net/tiers";
+    //private String baseUrl = "https://api.uku3lig.net/tiers";
+    private String baseUrl = "http://too-butler.gl.at.ply.gg:1247/api/profile";
 
     public GameMode getGameMode() {
         try {
-            return TierCache.findMode(this.gameMode);
+            return TierCache.findMode(this.gameMode);   
         } catch (NoSuchElementException e) {
             GameMode first = TierCache.GAMEMODES.getFirst();
             this.gameMode = first.id();

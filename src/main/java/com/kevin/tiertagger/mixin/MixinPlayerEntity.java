@@ -11,10 +11,20 @@ import org.spongepowered.asm.mixin.injection.At;
 public class MixinPlayerEntity {
     @ModifyReturnValue(method = "getDisplayName", at = @At("RETURN"))
     public Text prependTier(Text original) {
-        if (TierTagger.getManager().getConfig().isEnabled()) {
-            PlayerEntity self = (PlayerEntity) (Object) this;
-            return TierTagger.appendTier(self, original);
-        } else {
+        try {
+            if (original == null) return null;
+            if (TierTagger.getManager() == null || TierTagger.getManager().getConfig() == null) {
+                return original;
+            }
+            if (TierTagger.getManager().getConfig().isEnabled()) {
+                PlayerEntity self = (PlayerEntity) (Object) this;
+                Text result = TierTagger.appendTier(self, original);
+                return result != null ? result : original;
+            } else {
+                return original;
+            }
+        } catch (Exception e) {
+            TierTagger.getLogger().error("Erro no mixin: ", e);
             return original;
         }
     }

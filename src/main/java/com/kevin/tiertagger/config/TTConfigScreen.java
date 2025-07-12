@@ -17,13 +17,44 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
+    private boolean firstInit = true;
+    
     public TTConfigScreen(Screen parent) {
-        super("TierTagger Config", parent, TierTagger.getManager());
+        super("TierTagger Config", parent, java.util.Objects.requireNonNull(TierTagger.getManager(), "Manager nulo na TTConfigScreen!"));
+        System.out.println("[TTConfigScreen] Construtor chamado. Manager: " + TierTagger.getManager());
+    }
+
+    @Override
+    protected void init() {
+        System.out.println("[TTConfigScreen] init chamado");
+        try {
+            super.init();
+            if (firstInit) {
+                System.out.println("[TTConfigScreen] Primeira inicializacao completa");
+                firstInit = false;
+            }
+        } catch (Exception e) {
+            System.err.println("[TTConfigScreen] Erro na inicializacao: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     @Override
     protected Tab[] getTabs(TierTaggerConfig config) {
-        return new Tab[]{new MainSettingsTab(), new ColorsTab(), new TierlistTab()};
+        if (config == null) {
+            System.err.println("[TTConfigScreen] Config nulo em getTabs!");
+            throw new NullPointerException("Config nulo em getTabs!");
+        }
+        
+        try {
+            Tab[] tabs = new Tab[]{new MainSettingsTab(), new ColorsTab(), new TierlistTab()};
+            System.out.println("[TTConfigScreen] getTabs chamado. Tabs: " + java.util.Arrays.toString(tabs));
+            return tabs;
+        } catch (Exception e) {
+            System.err.println("[TTConfigScreen] Erro criando tabs: " + e.getMessage());
+            e.printStackTrace();
+            return new Tab[0];
+        }
     }
 
     public class MainSettingsTab extends ButtonTab<TierTaggerConfig> {
@@ -33,16 +64,35 @@ public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
 
         @Override
         protected WidgetCreator[] getWidgets(TierTaggerConfig config) {
-            return new WidgetCreator[]{
-                    CyclingOption.ofBoolean("tiertagger.config.enabled", config.isEnabled(), config::setEnabled),
-                    new CyclingOption<>("tiertagger.config.gamemode", TierCache.GAMEMODES, config.getGameMode(), m -> config.setGameMode(m.id()), m -> Text.literal(m.title())),
-                    CyclingOption.ofBoolean("tiertagger.config.retired", config.isShowRetired(), config::setShowRetired),
-                    CyclingOption.ofTranslatableEnum("tiertagger.config.highest", TierTaggerConfig.HighestMode.class, config.getHighestMode(), config::setHighestMode, SimpleOption.constantTooltip(Text.translatable("tiertagger.config.highest.desc"))),
-                    CyclingOption.ofTranslatableEnum("tiertagger.config.statistic", TierTaggerConfig.Statistic.class, config.getShownStatistic(), config::setShownStatistic),
-                    CyclingOption.ofBoolean("tiertagger.config.icons", config.isShowIcons(), config::setShowIcons),
-                    new SimpleButton("tiertagger.clear", b -> TierCache.clearCache()),
-                    new ScreenOpenButton("tiertagger.config.search", PlayerSearchScreen::new)
-            };
+            try {
+                if (TierCache.GAMEMODES.isEmpty()) {
+                    System.out.println("[MainSettingsTab] Gamemodes vazios, usando cpvp como default");
+                    return new WidgetCreator[]{
+                            CyclingOption.ofBoolean("tiertagger.config.enabled", config.isEnabled(), config::setEnabled),
+                            CyclingOption.ofBoolean("tiertagger.config.retired", config.isShowRetired(), config::setShowRetired),
+                            CyclingOption.ofTranslatableEnum("tiertagger.config.highest", TierTaggerConfig.HighestMode.class, config.getHighestMode(), config::setHighestMode, SimpleOption.constantTooltip(Text.translatable("tiertagger.config.highest.desc"))),
+                            CyclingOption.ofTranslatableEnum("tiertagger.config.statistic", TierTaggerConfig.Statistic.class, config.getShownStatistic(), config::setShownStatistic),
+                            CyclingOption.ofBoolean("tiertagger.config.icons", config.isShowIcons(), config::setShowIcons),
+                            new SimpleButton("tiertagger.clear", b -> TierCache.clearCache()),
+                            new ScreenOpenButton("tiertagger.config.search", PlayerSearchScreen::new)
+                    };
+                }
+                
+                return new WidgetCreator[]{
+                        CyclingOption.ofBoolean("tiertagger.config.enabled", config.isEnabled(), config::setEnabled),
+                        new CyclingOption<>("tiertagger.config.gamemode", TierCache.GAMEMODES, config.getGameMode(), m -> config.setGameMode(m.id()), m -> Text.literal(m.title())),
+                        CyclingOption.ofBoolean("tiertagger.config.retired", config.isShowRetired(), config::setShowRetired),
+                        CyclingOption.ofTranslatableEnum("tiertagger.config.highest", TierTaggerConfig.HighestMode.class, config.getHighestMode(), config::setHighestMode, SimpleOption.constantTooltip(Text.translatable("tiertagger.config.highest.desc"))),
+                        CyclingOption.ofTranslatableEnum("tiertagger.config.statistic", TierTaggerConfig.Statistic.class, config.getShownStatistic(), config::setShownStatistic),
+                        CyclingOption.ofBoolean("tiertagger.config.icons", config.isShowIcons(), config::setShowIcons),
+                        new SimpleButton("tiertagger.clear", b -> TierCache.clearCache()),
+                        new ScreenOpenButton("tiertagger.config.search", PlayerSearchScreen::new)
+                };
+            } catch (Exception e) {
+                System.err.println("[MainSettingsTab] Erro criando widgets: " + e.getMessage());
+                e.printStackTrace();
+                return new WidgetCreator[0];
+            }
         }
     }
 
@@ -53,26 +103,32 @@ public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
 
         @Override
         protected WidgetCreator[] getWidgets(TierTaggerConfig config) {
-            Optional<TierList> current = TierList.findByUrl(config.getBaseUrl());
+            try {
+                Optional<TierList> current = TierList.findByUrl(config.getBaseUrl());
 
-            List<WidgetCreator> widgets = Arrays.stream(TierList.values())
-                    .map(t -> {
-                        boolean isCurrent = current.isPresent() && current.get() == t;
-                        return new SimpleButton(t.styledName(isCurrent), b -> {
-                            config.setBaseUrl(t.getUrl());
-                            TierTagger.getManager().saveConfig();
-                            TTConfigScreen.this.close();
-                            TierCache.init();
-                            Ukutils.sendToast(Text.literal("Tierlist changed to " + t.getName() + "!"), Text.literal("Reloading tiers..."));
-                        });
-                    })
-                    .collect(Collectors.toList());
+                List<WidgetCreator> widgets = Arrays.stream(TierList.values())
+                        .map(t -> {
+                            boolean isCurrent = current.isPresent() && current.get() == t;
+                            return new SimpleButton(t.styledName(isCurrent), b -> {
+                                config.setBaseUrl(t.getUrl());
+                                TierTagger.getManager().saveConfig();
+                                TTConfigScreen.this.close();
+                                TierCache.init();
+                                Ukutils.sendToast(Text.literal("Tierlist changed to " + t.getName() + "!"), Text.literal("Reloading tiers..."));
+                            });
+                        })
+                        .collect(Collectors.toList());
 
-            if (current.isEmpty()) {
-                widgets.add(new SimpleButton("Custom (selected, " + config.getBaseUrl() + ")", b -> {}));
+                if (current.isEmpty()) {
+                    widgets.add(new SimpleButton("Custom (selecionado, " + config.getBaseUrl() + ")", b -> {}));
+                }
+
+                return widgets.toArray(WidgetCreator[]::new);
+            } catch (Exception e) {
+                System.err.println("[TierlistTab] Erro criando widgets: " + e.getMessage());
+                e.printStackTrace();
+                return new WidgetCreator[0];
             }
-
-            return widgets.toArray(WidgetCreator[]::new);
         }
     }
 
@@ -83,18 +139,24 @@ public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
 
         @Override
         protected WidgetCreator[] getWidgets(TierTaggerConfig config) {
-            // i genuinely don't understand but chaining the calls just EXPLODES????
-            Comparator<Map.Entry<String, Integer>> comparator = Comparator.comparing(e -> e.getKey().charAt(2));
-            comparator = comparator.thenComparing(e -> e.getKey().charAt(0));
+            try {
+                // i genuinely don't understand but chaining the calls just EXPLODES????
+                Comparator<Map.Entry<String, Integer>> comparator = Comparator.comparing(e -> e.getKey().charAt(2));
+                comparator = comparator.thenComparing(e -> e.getKey().charAt(0));
 
-            List<ColorOption> tiers = config.getTierColors().entrySet().stream()
-                    .sorted(comparator)
-                    .map(e -> new ColorOption(e.getKey(), e.getValue(), val -> config.getTierColors().put(e.getKey(), val)))
-                    .collect(Collectors.toList());
+                List<ColorOption> tiers = config.getTierColors().entrySet().stream()
+                        .sorted(comparator)
+                        .map(e -> new ColorOption(e.getKey(), e.getValue(), val -> config.getTierColors().put(e.getKey(), val)))
+                        .collect(Collectors.toList());
 
-            tiers.addLast(new ColorOption("tiertagger.colors.retired", config.getRetiredColor(), config::setRetiredColor));
+                tiers.addLast(new ColorOption("tiertagger.colors.retired", config.getRetiredColor(), config::setRetiredColor));
 
-            return tiers.toArray(WidgetCreator[]::new);
+                return tiers.toArray(WidgetCreator[]::new);
+            } catch (Exception e) {
+                System.err.println("[ColorsTab] Erro criando widgets: " + e.getMessage());
+                e.printStackTrace();
+                return new WidgetCreator[0];
+            }
         }
     }
 }

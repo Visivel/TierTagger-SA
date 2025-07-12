@@ -15,7 +15,7 @@ public class PlayerSearchScreen extends CloseableScreen {
     private ButtonWidget searchButton;
 
     public PlayerSearchScreen(Screen parent) {
-        super("Player Search", parent);
+        super("Procurar jogador", parent);
     }
 
     @Override

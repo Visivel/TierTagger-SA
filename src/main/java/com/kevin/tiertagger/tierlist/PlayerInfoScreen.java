@@ -51,7 +51,7 @@ public class PlayerInfoScreen extends CloseableScreen {
     private final Queue<TextWidget> textWidgets = new ConcurrentLinkedQueue<>();
 
     public PlayerInfoScreen(Screen parent, String player) {
-        super(Text.of("Player Info"), parent);
+        super(Text.of("Informacoes do Jogador"), parent);
         this.player = player;
     }
 
@@ -83,7 +83,7 @@ public class PlayerInfoScreen extends CloseableScreen {
                                 text.setY(rankingY);
 
                                 String date = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC).format(Instant.ofEpochSecond(namedRanking.ranking().attained()));
-                                Text tooltipText = Text.literal("Attained: " + date + "\nPoints: " + points(namedRanking.ranking())).formatted(Formatting.GRAY);
+                                Text tooltipText = Text.literal("Testado: " + date + "\nPontos: " + points(namedRanking.ranking())).formatted(Formatting.GRAY);
                                 text.setTooltip(Tooltip.of(tooltipText));
 
                                 textWidgets.add(text);
@@ -103,7 +103,7 @@ public class PlayerInfoScreen extends CloseableScreen {
         }
 
         String name = this.info == null ? this.player : this.info.name();
-        context.drawCenteredTextWithShadow(this.textRenderer, name + "'s profile", this.width / 2, 20, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(this.textRenderer, "Perfil de" + name, this.width / 2, 20, 0xFFFFFF);
 
         if (this.texture != null && this.info != null) {
             context.drawTexture(RenderLayer::getGuiTextured, texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144, 60, 144);
@@ -117,7 +117,7 @@ public class PlayerInfoScreen extends CloseableScreen {
             context.drawTextWithShadow(this.textRenderer, getRankText(this.info), this.width / 2 + 5, startY + 30, 0xFFFFFF);
             context.drawTextWithShadow(this.textRenderer, "Rankings:", this.width / 2 + 5, startY + 45, 0xFFFFFF);
         } else {
-            String text = this.everythingIsAwesome ? "Loading..." : "Unknown player";
+            String text = this.everythingIsAwesome ? "Carregando..." : "Jogador nao encontrado";
             context.drawCenteredTextWithShadow(this.textRenderer, text, this.width / 2, this.height / 2, 0xFFFFFF);
         }
     }

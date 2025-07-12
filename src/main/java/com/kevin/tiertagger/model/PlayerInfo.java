@@ -72,15 +72,74 @@ public record PlayerInfo(String uuid, String name, Map<String, Ranking> rankings
     }
 
     public static CompletableFuture<PlayerInfo> search(HttpClient client, String query) {
-        String endpoint = TierTagger.getManager().getConfig().getBaseUrl() + "/search_profile/" + query;
+        String baseUrl = TierTagger.getManager().getConfig().getBaseUrl();
+        boolean isSATiers = baseUrl.contains("too-butler.gl.at.ply.gg:1247/api/profile");
+        String endpoint;
+        if (isSATiers) {
+            endpoint = baseUrl + "/" + query;
+            com.kevin.tiertagger.TierTagger.getLogger().info("[SATiers] Endpoint usado: {}", endpoint);
+        } else {
+            endpoint = baseUrl + "/search_profile/" + query;
+        }
         final HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint)).GET().build();
 
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(HttpResponse::body)
-                .thenApply(s -> TierTagger.GSON.fromJson(s, PlayerInfo.class))
+                .thenApply(s -> {
+                    if (isSATiers) {
+                        com.kevin.tiertagger.TierTagger.getLogger().info("[SATiers] Body response: {}", s);
+
+                        try {
+                            com.google.gson.JsonObject obj = com.kevin.tiertagger.TierTagger.GSON.fromJson(s, com.google.gson.JsonObject.class);
+                            com.kevin.tiertagger.TierTagger.getLogger().info("[SATiers] JSON parsed: {}", obj);
+                            if (obj == null || !obj.has("data") || obj.get("data").isJsonNull()) {
+                                com.kevin.tiertagger.TierTagger.getLogger().error("SATiers resposta invalida (sem data): {}", s);
+                                return null;
+                            }
+                            com.google.gson.JsonObject data = obj.getAsJsonObject("data");
+                            com.kevin.tiertagger.TierTagger.getLogger().info("[SATiers] JSON data: {}", data);
+                            if (data == null || !data.has("jogador") || !data.has("ranking") || data.get("jogador").isJsonNull() || data.get("ranking").isJsonNull()) {
+                                com.kevin.tiertagger.TierTagger.getLogger().error("SATiers resposta invalida (faltando jogador/ranking): {}", s);
+                                return null;
+                            }
+                            String username = data.get("jogador").getAsString();
+                            String tier = data.get("ranking").getAsString();
+                            com.kevin.tiertagger.TierTagger.getLogger().info("[SATiers] username: {}, tier: {}", username, tier);
+                            if (username == null || tier == null) {
+                                com.kevin.tiertagger.TierTagger.getLogger().error("SATiers resposta invalida (username/tier nulo): {}", s);
+                                return null;
+                            }
+                            java.util.Map<String, Ranking> rankings = new java.util.HashMap<>();
+                            rankings.put("vanilla", new Ranking(parseTier(tier), parsePos(tier), null, null, 0L, false));
+                            java.util.UUID fakeUuid = java.util.UUID.nameUUIDFromBytes(("SATiers:" + username).getBytes());
+return new PlayerInfo(fakeUuid.toString(), username, rankings, "SA", 0, 0, java.util.Collections.emptyList(), false);
+                        } catch (Exception e) {
+                            com.kevin.tiertagger.TierTagger.getLogger().error("SATiers Excecao ao parsear resposta: {}", s, e);
+                            return null;
+                        }
+                    }
+                    return TierTagger.GSON.fromJson(s, PlayerInfo.class);
+                })
                 .whenComplete((i, t) -> {
                     if (t != null) TierTagger.getLogger().warn("Error searching player {}", query, t);
                 });
+    }
+
+
+    private static int parseTier(String tier) {
+        if (tier == null) return 5;
+        if (tier.toLowerCase().contains("1")) return 1;
+        if (tier.toLowerCase().contains("2")) return 2;
+        if (tier.toLowerCase().contains("3")) return 3;
+        if (tier.toLowerCase().contains("4")) return 4;
+        if (tier.toLowerCase().contains("5")) return 5;
+        return 5;
+    }
+    private static int parsePos(String tier) {
+        if (tier == null) return 1;
+        if (tier.toLowerCase().contains("high")) return 0;
+        if (tier.toLowerCase().contains("low")) return 1;
+        return 1;
     }
 
     public int getRegionColor() {
@@ -132,6 +191,10 @@ public record PlayerInfo(String uuid, String name, Map<String, Ranking> rankings
         List<NamedRanking> tiers = new ArrayList<>(this.rankings.entrySet().stream()
                 .map(e -> e.getValue().asNamed(TierCache.findMode(e.getKey())))
                 .toList());
+
+        if (tiers.isEmpty() && this.rankings.containsKey("vanilla")) {
+            tiers.add(this.rankings.get("vanilla").asNamed(TierCache.findMode("vanilla")));
+        }
 
         tiers.sort(Comparator.comparing((NamedRanking a) -> a.ranking.retired, Boolean::compare)
                 .thenComparingInt(a -> a.ranking.tier)

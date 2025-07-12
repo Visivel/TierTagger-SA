@@ -1,6 +1,7 @@
 package com.kevin.tiertagger.model;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import com.kevin.tiertagger.TierTagger;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
@@ -22,12 +23,23 @@ public record GameMode(String id, String title) {
 
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(r -> {
-                    JsonObject obj = TierTagger.GSON.fromJson(r.body(), JsonObject.class);
-
-                    return obj.entrySet().stream().map(e -> {
-                        String title = e.getValue().getAsJsonObject().get("title").getAsString();
-                        return new GameMode(e.getKey(), title);
-                    }).toList();
+                    try {
+                        JsonElement element = TierTagger.GSON.fromJson(r.body(), JsonElement.class);
+                        if (!element.isJsonObject()) {
+                            TierTagger.getLogger().error("Resposta inesperada ao buscar gamemodes: {}", r.body());
+                            return List.of(new GameMode("vanilla", "Vanilla"));
+                        }
+                        JsonObject obj = element.getAsJsonObject();
+                        return obj.entrySet().stream().map(e -> {
+                            String id = e.getKey();
+                            JsonObject valueObj = e.getValue().isJsonObject() ? e.getValue().getAsJsonObject() : null;
+                            String title = valueObj != null && valueObj.has("name") ? valueObj.get("name").getAsString() : id;
+                            return new GameMode(id, title);
+                        }).toList();
+                    } catch (Exception ex) {
+                        TierTagger.getLogger().error("Erro ao parsear gamemodes: {}", r.body(), ex);
+                        return List.of(new GameMode("vanilla", "Vanilla"));
+                    }
                 });
     }
 

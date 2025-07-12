@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "tier-tagger",
   "version": "${version}",
-  "name": "TierTagger",
-  "description": "Display player's PvP Tiers in their nametag!",
-  "authors": ["uku", "netiyiy (original creator)"],
+  "name": "TierTagger SA",
+  "description": "Mostra o tier brasileiro dos jogadores na nametag",
+  "authors": ["uku", "netiyiy (criador original)", "Visivel (criador do fork)"],
   "contact": {
     "sources": "https://github.com/mctiers-dev/TierTagger.git"
   },

@@ -85,23 +85,44 @@ public class TierTagger implements ModInitializer {
     }
 
     public static Text appendTier(PlayerEntity player, Text text) {
-        MutableText following = switch (manager.getConfig().getShownStatistic()) {
-            case TIER -> getPlayerTier(player.getUuid())
-                    .map(entry -> {
+        MutableText following = null;
+        String baseUrl = manager.getConfig().getBaseUrl();
+        boolean isSATiers = baseUrl.contains("too-butler.gl.at.ply.gg:1247/api/profile");
+        switch (manager.getConfig().getShownStatistic()) {
+            case TIER -> {
+                Optional<PlayerInfo.NamedRanking> opt;
+                if (isSATiers) {
+                    String nickname = player.getName().getString();
+                    if (!TierCache.isValidPlayerName(nickname)) {
+                        return text;
+                    }
+                    
+                    Optional<PlayerInfo> infoOpt = TierCache.getPlayerInfoByName(nickname.toLowerCase());
+                    if (infoOpt.isPresent()) {
+                        following = createTierText(infoOpt.get());
+                    } else {
+                        TierCache.searchPlayer(nickname);
+                    }
+                } else {
+                    opt = getPlayerTier(player.getUuid());
+                    if (opt.isPresent()) {
+                        PlayerInfo.NamedRanking entry = opt.get();
                         String tier = getTierText(entry.ranking());
                         MutableText tierText = Text.literal(tier).withColor(getTierColor(tier));
-
-                        if (manager.getConfig().isShowIcons() && entry.mode() != null && entry.mode().icon().isPresent()) {
-                            return Text.literal(entry.mode().icon().get().toString()).append(tierText);
+                        if (entry.mode() != null && entry.mode().icon().isPresent() && manager.getConfig().isShowIcons()) {
+                            following = Text.literal(entry.mode().icon().get().toString()).append(tierText);
                         } else {
-                            return tierText;
+                            following = tierText;
                         }
-                    })
-                    .orElse(null);
-            case RANK -> TierCache.getPlayerInfo(player.getUuid())
-                    .map(i -> Text.literal("#" + i.overall()))
-                    .orElse(null);
-        };
+                    }
+                }
+            }
+            case RANK -> {
+                following = TierCache.getPlayerInfo(player.getUuid())
+                        .map(i -> Text.literal("#" + i.overall()))
+                        .orElse(null);
+            }
+        }
 
         if (following != null) {
             following.append(Text.literal(" | ").formatted(Formatting.GRAY));
@@ -121,6 +142,10 @@ public class TierTagger implements ModInitializer {
                     TierTaggerConfig.HighestMode highestMode = manager.getConfig().getHighestMode();
 
                     if (ranking == null) {
+                        if (info.rankings().size() == 1 && info.rankings().containsKey("vanilla")) {
+                            PlayerInfo.Ranking vanillaRanking = info.rankings().get("vanilla");
+                            return vanillaRanking.asNamed(TierCache.findMode("vanilla"));
+                        }
                         if (highestMode != TierTaggerConfig.HighestMode.NEVER && highest.isPresent()) {
                             return highest.get();
                         } else {
@@ -145,6 +170,33 @@ public class TierTagger implements ModInitializer {
         }
     }
 
+    private static MutableText createTierText(PlayerInfo info) {
+        if (info.rankings().size() == 1 && info.rankings().containsKey("vanilla")) {
+            GameMode mode = TierCache.findMode("vanilla");
+            PlayerInfo.Ranking r = info.rankings().get("vanilla");
+            String tier = getTierText(r);
+            MutableText tierText = Text.literal(tier).withColor(getTierColor(tier));
+            if (mode != null && mode.icon().isPresent() && manager.getConfig().isShowIcons()) {
+                return Text.literal(mode.icon().get().toString()).append(tierText);
+            } else {
+                return tierText;
+            }
+        } else {
+            for (var entry : info.rankings().entrySet()) {
+                GameMode mode = TierCache.findMode(entry.getKey());
+                PlayerInfo.Ranking r = entry.getValue();
+                String tier = getTierText(r);
+                MutableText tierText = Text.literal(tier).withColor(getTierColor(tier));
+                if (mode != null && mode.icon().isPresent() && manager.getConfig().isShowIcons()) {
+                    return Text.literal(mode.icon().get().toString()).append(tierText);
+                } else {
+                    return tierText;
+                }
+            }
+        }
+        return null;
+    }
+
     private static int displayTierInfo(CommandContext<FabricClientCommandSource> ctx) {
         PlayerArgumentType.PlayerSelector selector = ctx.getArgument("player", PlayerArgumentType.PlayerSelector.class);
 
@@ -159,7 +211,15 @@ public class TierTagger implements ModInitializer {
         } else {
             ctx.getSource().sendFeedback(Text.of("[TierTagger] Searching..."));
             TierCache.searchPlayer(selector.name())
-                    .thenAccept(p -> ctx.getSource().sendFeedback(printPlayerInfo(p)))
+                    .thenAccept(p -> {
+                        if (p == null) {
+                            TierTagger.getLogger().warn("SATiers PlayerInfo retornado pelo searchPlayer deu null no {}", selector.name());
+                            ctx.getSource().sendError(Text.of("Could not find player " + selector.name()));
+                        } else {
+                            TierTagger.getLogger().info("[SATiers] return do PlayerInfo: {}", p);
+                            ctx.getSource().sendFeedback(printPlayerInfo(p));
+                        }
+                    })
                     .exceptionally(t -> {
                         ctx.getSource().sendError(Text.of("Could not find player " + selector.name()));
                         return null;
@@ -170,8 +230,15 @@ public class TierTagger implements ModInitializer {
     }
 
     private static Text printPlayerInfo(PlayerInfo info) {
-        MutableText text = Text.empty().append("=== Rankings for " + info.name() + " ===");
-
+        MutableText text = Text.empty().append("=== Rankings do " + info.name() + " ===");
+        if (info.rankings().size() == 1 && info.rankings().containsKey("vanilla")) {
+            GameMode mode = TierCache.findMode("vanilla");
+            PlayerInfo.Ranking r = info.rankings().get("vanilla");
+            String tier = getTierText(r);
+            Text tierText = Text.literal(tier).styled(s -> s.withColor(getTierColor(tier)));
+            text.append(Text.literal("\n").append(mode.asStyled(true)).append(": ").append(tierText));
+            return text;
+        }
         info.rankings().forEach((m, r) -> {
             if (m == null) return;
             GameMode mode = TierCache.findMode(m);
