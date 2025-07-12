@@ -6,7 +6,7 @@
   "description": "Mostra o tier brasileiro dos jogadores na nametag",
   "authors": ["uku", "netiyiy (criador original)", "Visivel (criador do fork)"],
   "contact": {
-    "sources": "https://github.com/mctiers-dev/TierTagger.git"
+    "sources": "https://github.com/Visivel/TierTagger-SA.git"
   },
   "license": "MPL-2.0",
   "icon": "assets/tier-tagger/icon.png",
