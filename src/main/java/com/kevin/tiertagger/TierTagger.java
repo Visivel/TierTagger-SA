@@ -45,7 +45,7 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.lit
 
 public class TierTagger implements ModInitializer {
     public static final String MOD_ID = "tiertagger";
-    private static final String UPDATE_URL_FORMAT = "https://api.modrinth.com/v2/project/dpkYdLu5/version?game_versions=%s";
+    private static final String UPDATE_URL_FORMAT = "https://api.modrinth.com/v2/project/iy2V1aSI/version?game_versions=%s";
 
     public static final Gson GSON = new GsonBuilder().create();
 

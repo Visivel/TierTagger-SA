@@ -35,6 +35,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Setter
 public class PlayerInfoScreen extends CloseableScreen {
@@ -44,6 +46,8 @@ public class PlayerInfoScreen extends CloseableScreen {
     private Identifier texture;
     private PlayerInfo info;
     private boolean everythingIsAwesome = true;
+    private boolean isLoading = true;
+    private String errorMessage = null;
 
     /**
      * Having a queue like this avoids a {@link java.util.ConcurrentModificationException} due to adding drawable children on a different thread
@@ -64,10 +68,24 @@ public class PlayerInfoScreen extends CloseableScreen {
         this.fetchTexture(this.player).thenAccept(this::setTexture);
 
         if (this.info == null) {
-            TierCache.searchPlayer(this.player).thenAccept(this::setInfo)
+            CompletableFuture<PlayerInfo> searchFuture = TierCache.searchPlayer(this.player);
+            
+            searchFuture.orTimeout(15, TimeUnit.SECONDS)
+                    .thenAccept(this::setInfo)
                     .whenComplete((v, t) -> {
+                        this.isLoading = false;
                         if (t != null) {
                             this.everythingIsAwesome = false;
+                            if (t instanceof TimeoutException) {
+                                this.errorMessage = "Tempo limite excedido - Jogador nao encontrado";
+                                TierTagger.getLogger().warn("Timeout ao buscar jogador: {}", this.player);
+                            } else {
+                                this.errorMessage = "Jogador nao encontrado";
+                                TierTagger.getLogger().warn("Erro ao buscar jogador {}: {}", this.player, t.getMessage());
+                            }
+                        } else if (this.info == null) {
+                            this.everythingIsAwesome = false;
+                            this.errorMessage = "Jogador nao encontrado";
                         } else {
                             int rankingHeight = this.info.rankings().size() * 10;
                             int infoHeight = 56; // 4 lines of text (10 px tall) + 6 px padding
@@ -117,7 +135,14 @@ public class PlayerInfoScreen extends CloseableScreen {
             context.drawTextWithShadow(this.textRenderer, getRankText(this.info), this.width / 2 + 5, startY + 30, 0xFFFFFF);
             context.drawTextWithShadow(this.textRenderer, "Rankings:", this.width / 2 + 5, startY + 45, 0xFFFFFF);
         } else {
-            String text = this.everythingIsAwesome ? "Carregando..." : "Jogador nao encontrado";
+            String text;
+            if (this.isLoading && this.everythingIsAwesome) {
+                text = "Carregando...";
+            } else if (this.errorMessage != null) {
+                text = this.errorMessage;
+            } else {
+                text = "Jogador nao encontrado";
+            }
             context.drawCenteredTextWithShadow(this.textRenderer, text, this.width / 2, this.height / 2, 0xFFFFFF);
         }
     }

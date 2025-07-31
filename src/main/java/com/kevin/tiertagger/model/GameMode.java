@@ -24,18 +24,53 @@ public record GameMode(String id, String title) {
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(r -> {
                     try {
-                        JsonElement element = TierTagger.GSON.fromJson(r.body(), JsonElement.class);
-                        if (!element.isJsonObject()) {
-                            TierTagger.getLogger().error("Resposta inesperada ao buscar gamemodes: {}", r.body());
+                        String responseBody = r.body();
+                        if (responseBody == null || responseBody.trim().isEmpty()) {
+                            TierTagger.getLogger().warn("Resposta vazia ao buscar gamemodes");
                             return List.of(new GameMode("vanilla", "Vanilla"));
                         }
+                        
+                        String trimmedBody = responseBody.trim();
+                        if (!trimmedBody.startsWith("{") && !trimmedBody.startsWith("[")) {
+                            TierTagger.getLogger().warn("API retornou string simples ao inves de JSON: {}", responseBody);
+                            return List.of(new GameMode("vanilla", "Vanilla"));
+                        }
+                        
+                        JsonElement element = TierTagger.GSON.fromJson(responseBody, JsonElement.class);
+                        if (element == null || !element.isJsonObject()) {
+                            TierTagger.getLogger().error("Resposta inesperada ao buscar gamemodes: {}", responseBody);
+                            return List.of(new GameMode("vanilla", "Vanilla"));
+                        }
+                        
                         JsonObject obj = element.getAsJsonObject();
-                        return obj.entrySet().stream().map(e -> {
-                            String id = e.getKey();
-                            JsonObject valueObj = e.getValue().isJsonObject() ? e.getValue().getAsJsonObject() : null;
-                            String title = valueObj != null && valueObj.has("name") ? valueObj.get("name").getAsString() : id;
-                            return new GameMode(id, title);
-                        }).toList();
+                        if (obj.entrySet().isEmpty()) {
+                            TierTagger.getLogger().warn("Objeto JSON vazio ao buscar gamemodes");
+                            return List.of(new GameMode("vanilla", "Vanilla"));
+                        }
+                        
+                        return obj.entrySet().stream()
+                                .filter(e -> {
+                                    String id = e.getKey();
+                                    if (id == null || id.trim().isEmpty()) {
+                                        return false;
+                                    }
+                                    String lowerId = id.toLowerCase().trim();
+                                    return !lowerId.equals("error") &&
+                                           !lowerId.equals("success") &&
+                                           !lowerId.equals("fail") &&
+                                           !lowerId.equals("failure") &&
+                                           !lowerId.equals("status") &&
+                                           !lowerId.equals("message") &&
+                                           !lowerId.equals("response") &&
+                                           !lowerId.startsWith("error") &&
+                                           !lowerId.startsWith("success");
+                                })
+                                .map(e -> {
+                                    String id = e.getKey();
+                                    JsonObject valueObj = e.getValue().isJsonObject() ? e.getValue().getAsJsonObject() : null;
+                                    String title = valueObj != null && valueObj.has("name") ? valueObj.get("name").getAsString() : id;
+                                    return new GameMode(id, title);
+                                }).toList();
                     } catch (Exception ex) {
                         TierTagger.getLogger().error("Erro ao parsear gamemodes: {}", r.body(), ex);
                         return List.of(new GameMode("vanilla", "Vanilla"));
