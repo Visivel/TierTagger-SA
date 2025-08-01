@@ -124,7 +124,7 @@ public class PlayerInfoScreen extends CloseableScreen {
         context.drawCenteredTextWithShadow(this.textRenderer, "Perfil de " + name, this.width / 2, 20, 0xFFFFFF);
 
         if (this.texture != null && this.info != null) {
-            context.drawTexture(texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144);
+            context.drawTexture(RenderLayer::getGuiTextured, texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144, 60, 144);
 
             int rankingHeight = this.info.rankings().size() * 10;
             int infoHeight = 56; // 4 lines of text (10 px tall) + 6 px padding
