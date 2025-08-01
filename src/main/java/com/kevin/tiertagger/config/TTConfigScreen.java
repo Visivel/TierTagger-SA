@@ -83,7 +83,7 @@ public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
                 widgets.add(CyclingOption.ofTranslatableEnum("Auto Tierlist Switch", AutoSwitchMode.class, config.getAutoSwitchMode(), mode -> {
                     config.setAutoSwitchMode(mode);
                     TTConfigScreen.this.init();
-                }));
+                }, SimpleOption.constantTooltip(Text.translatable("tiertagger.autoswitch.desc"))));
                 
                 if (config.getAutoSwitchMode() == AutoSwitchMode.CUSTOM || config.getAutoSwitchMode() == AutoSwitchMode.API_CUSTOM) {
                     widgets.add(new SimpleButton("Abrir configuracao", b -> AutoSwitchManager.openConfigFolder()));

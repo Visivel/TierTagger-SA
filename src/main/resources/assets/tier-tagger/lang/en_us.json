@@ -24,5 +24,6 @@
   "tiertagger.autoswitch.api": "API",
   "tiertagger.autoswitch.custom": "Custom",
   "tiertagger.autoswitch.api_custom": "API + Custom",
-  "tiertagger.autoswitch.off": "OFF"
+  "tiertagger.autoswitch.off": "OFF",
+  "tiertagger.autoswitch.desc": "- API: Busca na API qual tierlist pertence a qual server\n- Custom: Usa config local para quais servers usar x tierlist\n- API + Custom: Busca na API e usa Custom juntamente\n- OFF: Desativa o Auto Tierlist Switch, troca manual."
 }
