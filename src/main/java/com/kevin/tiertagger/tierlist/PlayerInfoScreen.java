@@ -33,10 +33,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 @Setter
 public class PlayerInfoScreen extends CloseableScreen {
@@ -46,16 +43,11 @@ public class PlayerInfoScreen extends CloseableScreen {
     private Identifier texture;
     private PlayerInfo info;
     private boolean everythingIsAwesome = true;
-    private boolean isLoading = true;
-    private String errorMessage = null;
 
-    /**
-     * Having a queue like this avoids a {@link java.util.ConcurrentModificationException} due to adding drawable children on a different thread
-     */
     private final Queue<TextWidget> textWidgets = new ConcurrentLinkedQueue<>();
 
     public PlayerInfoScreen(Screen parent, String player) {
-        super(Text.of("Informacoes do Jogador"), parent);
+        super(Text.of("Player Info"), parent);
         this.player = player;
     }
 
@@ -65,35 +57,18 @@ public class PlayerInfoScreen extends CloseableScreen {
                 .dimensions(this.width / 2 - 100, this.height - 27, 200, 20)
                 .build());
 
-        this.fetchTexture(this.player).thenAccept(this::setTexture);
-
         if (this.info == null) {
-            CompletableFuture<PlayerInfo> searchFuture = TierCache.searchPlayer(this.player);
-            
-            searchFuture.orTimeout(15, TimeUnit.SECONDS)
-                    .thenAccept(this::setInfo)
+            TierCache.searchPlayer(this.player).thenAccept(this::setInfo)
                     .whenComplete((v, t) -> {
-                        this.isLoading = false;
                         if (t != null) {
                             this.everythingIsAwesome = false;
-                            if (t instanceof TimeoutException) {
-                                this.errorMessage = "Tempo limite excedido - Jogador nao encontrado";
-                                TierTagger.getLogger().warn("Timeout ao buscar jogador: {}", this.player);
-                            } else {
-                                this.errorMessage = "Jogador nao encontrado";
-                                TierTagger.getLogger().warn("Erro ao buscar jogador {}: {}", this.player, t.getMessage());
-                            }
-                        } else if (this.info == null) {
-                            this.everythingIsAwesome = false;
-                            this.errorMessage = "Jogador nao encontrado";
                         } else {
                             int rankingHeight = this.info.rankings().size() * 10;
-                            int infoHeight = 56; // 4 lines of text (10 px tall) + 6 px padding
+                            int infoHeight = 56;
                             int startY = (this.height - infoHeight - rankingHeight) / 2;
                             int rankingY = startY + infoHeight;
 
                             for (PlayerInfo.NamedRanking namedRanking : this.info.getSortedTiers()) {
-                                // ugly "fix" to avoid crashes if upstream doesn't have the right names
                                 if (namedRanking.mode() == null) continue;
 
                                 TextWidget text = new TextWidget(formatTier(namedRanking.mode(), namedRanking.ranking()), this.textRenderer);
@@ -101,7 +76,7 @@ public class PlayerInfoScreen extends CloseableScreen {
                                 text.setY(rankingY);
 
                                 String date = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC).format(Instant.ofEpochSecond(namedRanking.ranking().attained()));
-                                Text tooltipText = Text.literal("Testado: " + date + "\nPontos: " + points(namedRanking.ranking())).formatted(Formatting.GRAY);
+                                Text tooltipText = Text.literal("Quando obteve: " + date + "\nPontos: " + points(namedRanking.ranking())).formatted(Formatting.GRAY);
                                 text.setTooltip(Tooltip.of(tooltipText));
 
                                 textWidgets.add(text);
@@ -110,6 +85,8 @@ public class PlayerInfoScreen extends CloseableScreen {
                         }
                     });
         }
+
+        this.texture = this.fetchTexture(this.player);
     }
 
     @Override
@@ -121,10 +98,10 @@ public class PlayerInfoScreen extends CloseableScreen {
         }
 
         String name = this.info == null ? this.player : this.info.name();
-        context.drawCenteredTextWithShadow(this.textRenderer, "Perfil de " + name, this.width / 2, 20, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(this.textRenderer, name + "'s profile", this.width / 2, 20, 0xFFFFFF);
 
         if (this.texture != null && this.info != null) {
-            context.drawTexture(RenderLayer::getGuiTextured, texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144, 60, 144);    
+            context.drawTexture(RenderLayer::getGuiTextured, texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144, 60, 144);
 
             int rankingHeight = this.info.rankings().size() * 10;
             int infoHeight = 56; // 4 lines of text (10 px tall) + 6 px padding
@@ -140,38 +117,42 @@ public class PlayerInfoScreen extends CloseableScreen {
         }
     }
 
-    private CompletableFuture<Identifier> fetchTexture(String user) {
+    private Identifier fetchTexture(String user) {
         String username = user.toLowerCase();
         Identifier tex = Identifier.of(TierTagger.MOD_ID, "player_" + username);
 
-        if (Ukutils.textureExists(tex)) return CompletableFuture.completedFuture(tex);
+        if (Ukutils.textureExists(tex)) return tex;
 
         TextureManager texManager = MinecraftClient.getInstance().getTextureManager();
         HttpRequest req = HttpRequest.newBuilder(URI.create("https://mc-heads.net/body/" + username + "/240")).GET().build();
 
-        return HTTP_CLIENT.sendAsync(req, HttpResponse.BodyHandlers.ofByteArray()).thenApply(r -> {
-            if (r.statusCode() == 200) {
+        try {
+            HttpResponse<byte[]> res = HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofByteArray());
+
+            if (res.statusCode() == 200) {
                 try {
-                    NativeImage image = NativeImage.read(r.body());
-                    texManager.registerTexture(tex, new NativeImageBackedTexture(image));
+                    NativeImage image = NativeImage.read(res.body());
+                    texManager.registerTexture(tex, new NativeImageBackedTexture(tex::toString, image));
                 } catch (IOException e) {
                     TierTagger.getLogger().error("Failed to register head texture", e);
                 }
             } else {
-                TierTagger.getLogger().error("Could not fetch head texture: {} {}", r.statusCode(), new String(r.body()));
+                TierTagger.getLogger().error("Could not fetch head texture: {} {}", res.statusCode(), new String(res.body()));
             }
+        } catch (IOException e) {
+            TierTagger.getLogger().error("Failed to fetch head texture", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-            return tex;
-        });
+        return tex;
     }
 
     private Text formatTier(@NotNull GameMode gamemode, PlayerInfo.Ranking tier) {
         MutableText tierText = getTierText(tier.tier(), tier.pos(), tier.retired());
 
         if (tier.comparablePeak() < tier.comparableTier()) {
-            // warning caused by potential NPE by unboxing of peak{Tier,Pos} which CANNOT happen, see impl of comparablePeak
-            // noinspection DataFlowIssue
-            tierText = tierText.append(Text.literal(" (peak: ").styled(s -> s.withColor(Formatting.GRAY)))
+            tierText = tierText.append(Text.literal(" (pico: ").styled(s -> s.withColor(Formatting.GRAY)))
                     .append(getTierText(tier.peakTier(), tier.peakPos(), tier.retired()))
                     .append(Text.literal(")").styled(s -> s.withColor(Formatting.GRAY)));
         }
@@ -193,7 +174,7 @@ public class PlayerInfoScreen extends CloseableScreen {
 
     private Text getRegionText(PlayerInfo info) {
         return Text.empty()
-                .append(Text.literal("Region: "))
+                .append(Text.literal("Regiao: "))
                 .append(Text.literal(info.region()).styled(s -> s.withColor(info.getRegionColor())));
     }
 
@@ -201,7 +182,7 @@ public class PlayerInfoScreen extends CloseableScreen {
         PlayerInfo.PointInfo pointInfo = info.getPointInfo();
 
         return Text.empty()
-                .append(Text.literal("Points: "))
+                .append(Text.literal("Pontuacao: "))
                 .append(Text.literal(info.points() + " ").styled(s -> s.withColor(pointInfo.getColor())))
                 .append(Text.literal("(" + pointInfo.getTitle() + ")").styled(s -> s.withColor(pointInfo.getAccentColor())));
     }
@@ -215,7 +196,7 @@ public class PlayerInfoScreen extends CloseableScreen {
         };
 
         return Text.empty()
-                .append(Text.literal("Global rank: "))
+                .append(Text.literal("Rank global: "))
                 .append(Text.literal("#" + info.overall()).styled(s -> s.withColor(color)));
     }
 
