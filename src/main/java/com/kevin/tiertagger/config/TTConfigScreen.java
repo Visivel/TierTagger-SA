@@ -1,7 +1,9 @@
 package com.kevin.tiertagger.config;
 
+import com.kevin.tiertagger.AutoSwitchManager;
 import com.kevin.tiertagger.TierCache;
 import com.kevin.tiertagger.TierTagger;
+import com.kevin.tiertagger.model.AutoSwitchMode;
 import com.kevin.tiertagger.model.TierList;
 import com.kevin.tiertagger.tierlist.PlayerSearchScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -65,29 +67,32 @@ public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
         @Override
         protected WidgetCreator[] getWidgets(TierTaggerConfig config) {
             try {
-                if (TierCache.GAMEMODES.isEmpty()) {
-                    System.out.println("[MainSettingsTab] Gamemodes vazios, usando cpvp como default");
-                    return new WidgetCreator[]{
-                            CyclingOption.ofBoolean("tiertagger.config.enabled", config.isEnabled(), config::setEnabled),
-                            CyclingOption.ofBoolean("tiertagger.config.retired", config.isShowRetired(), config::setShowRetired),
-                            CyclingOption.ofTranslatableEnum("tiertagger.config.highest", TierTaggerConfig.HighestMode.class, config.getHighestMode(), config::setHighestMode, SimpleOption.constantTooltip(Text.translatable("tiertagger.config.highest.desc"))),
-                            CyclingOption.ofTranslatableEnum("tiertagger.config.statistic", TierTaggerConfig.Statistic.class, config.getShownStatistic(), config::setShownStatistic),
-                            CyclingOption.ofBoolean("tiertagger.config.icons", config.isShowIcons(), config::setShowIcons),
-                            new SimpleButton("tiertagger.clear", b -> TierCache.clearCache()),
-                            new ScreenOpenButton("tiertagger.config.search", PlayerSearchScreen::new)
-                    };
+                List<WidgetCreator> widgets = new ArrayList<>();
+                
+                widgets.add(CyclingOption.ofBoolean("tiertagger.config.enabled", config.isEnabled(), config::setEnabled));
+                
+                if (!TierCache.GAMEMODES.isEmpty()) {
+                    widgets.add(new CyclingOption<>("tiertagger.config.gamemode", TierCache.GAMEMODES, config.getGameMode(), m -> config.setGameMode(m.id()), m -> Text.literal(m.title())));
                 }
                 
-                return new WidgetCreator[]{
-                        CyclingOption.ofBoolean("tiertagger.config.enabled", config.isEnabled(), config::setEnabled),
-                        new CyclingOption<>("tiertagger.config.gamemode", TierCache.GAMEMODES, config.getGameMode(), m -> config.setGameMode(m.id()), m -> Text.literal(m.title())),
-                        CyclingOption.ofBoolean("tiertagger.config.retired", config.isShowRetired(), config::setShowRetired),
-                        CyclingOption.ofTranslatableEnum("tiertagger.config.highest", TierTaggerConfig.HighestMode.class, config.getHighestMode(), config::setHighestMode, SimpleOption.constantTooltip(Text.translatable("tiertagger.config.highest.desc"))),
-                        CyclingOption.ofTranslatableEnum("tiertagger.config.statistic", TierTaggerConfig.Statistic.class, config.getShownStatistic(), config::setShownStatistic),
-                        CyclingOption.ofBoolean("tiertagger.config.icons", config.isShowIcons(), config::setShowIcons),
-                        new SimpleButton("tiertagger.clear", b -> TierCache.clearCache()),
-                        new ScreenOpenButton("tiertagger.config.search", PlayerSearchScreen::new)
-                };
+                widgets.add(CyclingOption.ofBoolean("tiertagger.config.retired", config.isShowRetired(), config::setShowRetired));
+                widgets.add(CyclingOption.ofTranslatableEnum("tiertagger.config.highest", TierTaggerConfig.HighestMode.class, config.getHighestMode(), config::setHighestMode, SimpleOption.constantTooltip(Text.translatable("tiertagger.config.highest.desc"))));
+                widgets.add(CyclingOption.ofTranslatableEnum("tiertagger.config.statistic", TierTaggerConfig.Statistic.class, config.getShownStatistic(), config::setShownStatistic));
+                widgets.add(CyclingOption.ofBoolean("tiertagger.config.icons", config.isShowIcons(), config::setShowIcons));
+                
+                widgets.add(CyclingOption.ofTranslatableEnum("Auto Tierlist Switch", AutoSwitchMode.class, config.getAutoSwitchMode(), mode -> {
+                    config.setAutoSwitchMode(mode);
+                    TTConfigScreen.this.init();
+                }));
+                
+                if (config.getAutoSwitchMode() == AutoSwitchMode.CUSTOM || config.getAutoSwitchMode() == AutoSwitchMode.API_CUSTOM) {
+                    widgets.add(new SimpleButton("Abrir configuracao", b -> AutoSwitchManager.openConfigFolder()));
+                }
+                
+                widgets.add(new SimpleButton("tiertagger.clear", b -> TierCache.clearCache()));
+                widgets.add(new ScreenOpenButton("tiertagger.config.search", PlayerSearchScreen::new));
+                
+                return widgets.toArray(WidgetCreator[]::new);
             } catch (Exception e) {
                 System.err.println("[MainSettingsTab] Erro criando widgets: " + e.getMessage());
                 e.printStackTrace();
@@ -114,7 +119,7 @@ public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
                                 TierTagger.getManager().saveConfig();
                                 TTConfigScreen.this.close();
                                 TierCache.init();
-                                Ukutils.sendToast(Text.literal("Tierlist changed to " + t.getName() + "!"), Text.literal("Reloading tiers..."));
+                                Ukutils.sendToast(Text.literal("Tierlist mudada para " + t.getName() + "!"), Text.literal("Recarregando tiers..."));
                             });
                         })
                         .collect(Collectors.toList());

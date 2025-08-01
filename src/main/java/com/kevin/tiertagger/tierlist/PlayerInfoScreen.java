@@ -121,10 +121,10 @@ public class PlayerInfoScreen extends CloseableScreen {
         }
 
         String name = this.info == null ? this.player : this.info.name();
-        context.drawCenteredTextWithShadow(this.textRenderer, "Perfil de" + name, this.width / 2, 20, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(this.textRenderer, "Perfil de " + name, this.width / 2, 20, 0xFFFFFF);
 
         if (this.texture != null && this.info != null) {
-            context.drawTexture(RenderLayer::getGuiTextured, texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144, 60, 144);
+            context.drawTexture(texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144);
 
             int rankingHeight = this.info.rankings().size() * 10;
             int infoHeight = 56; // 4 lines of text (10 px tall) + 6 px padding
@@ -135,14 +135,7 @@ public class PlayerInfoScreen extends CloseableScreen {
             context.drawTextWithShadow(this.textRenderer, getRankText(this.info), this.width / 2 + 5, startY + 30, 0xFFFFFF);
             context.drawTextWithShadow(this.textRenderer, "Rankings:", this.width / 2 + 5, startY + 45, 0xFFFFFF);
         } else {
-            String text;
-            if (this.isLoading && this.everythingIsAwesome) {
-                text = "Carregando...";
-            } else if (this.errorMessage != null) {
-                text = this.errorMessage;
-            } else {
-                text = "Jogador nao encontrado";
-            }
+            String text = this.everythingIsAwesome ? "Carregando..." : "Jogador nao encontrado";
             context.drawCenteredTextWithShadow(this.textRenderer, text, this.width / 2, this.height / 2, 0xFFFFFF);
         }
     }

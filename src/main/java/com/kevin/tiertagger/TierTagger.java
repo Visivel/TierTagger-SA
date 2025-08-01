@@ -64,6 +64,7 @@ public class TierTagger implements ModInitializer {
     @Override
     public void onInitialize() {
         TierCache.init();
+        AutoSwitchManager.init();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registry) -> dispatcher.register(
                 literal(MOD_ID)
@@ -81,6 +82,7 @@ public class TierTagger implements ModInitializer {
                     }
                 });
 
+        AutoSwitchManager.fetchServerList();
         checkForUpdates();
     }
 

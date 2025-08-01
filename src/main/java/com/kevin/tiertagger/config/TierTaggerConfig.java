@@ -2,6 +2,7 @@ package com.kevin.tiertagger.config;
 
 import com.google.gson.internal.LinkedTreeMap;
 import com.kevin.tiertagger.TierCache;
+import com.kevin.tiertagger.model.AutoSwitchMode;
 import com.kevin.tiertagger.model.GameMode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,6 +27,9 @@ public class TierTaggerConfig implements Serializable {
     private int retiredColor = 0xa2d6ff;
     // note: this is a GSON internal class. this *might* break in the future
     private LinkedTreeMap<String, Integer> tierColors = defaultColors();
+    
+    // === auto switch settings ===
+    private AutoSwitchMode autoSwitchMode = AutoSwitchMode.API;
 
     // === internal stuff ===
 
