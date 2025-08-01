@@ -118,6 +118,7 @@ public class TTConfigScreen extends TabbedConfigScreen<TierTaggerConfig> {
                                 config.setBaseUrl(t.getUrl());
                                 TierTagger.getManager().saveConfig();
                                 TTConfigScreen.this.close();
+                                TierCache.clearCache();
                                 TierCache.init();
                                 Ukutils.sendToast(Text.literal("Tierlist mudada para " + t.getName() + "!"), Text.literal("Recarregando tiers..."));
                             });

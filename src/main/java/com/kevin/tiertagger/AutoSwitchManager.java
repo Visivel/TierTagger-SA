@@ -203,11 +203,13 @@ public class AutoSwitchManager {
             System.out.println("[AutoSwitch] Trocando para MCTiers");
             config.setBaseUrl(TierList.MCTIERS.getUrl());
             TierTagger.getManager().saveConfig();
+            TierCache.clearCache();
             TierCache.init();
         } else if (isSA) {
             System.out.println("[AutoSwitch] Trocando para SATiers");
             config.setBaseUrl(TierList.SATIERS.getUrl());
             TierTagger.getManager().saveConfig();
+            TierCache.clearCache();
             TierCache.init();
         } else {
             System.out.println("[AutoSwitch] Servidor nao encontrado em nenhuma lista, mantendo tierlist atual");
