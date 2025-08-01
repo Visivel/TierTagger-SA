@@ -76,7 +76,7 @@ public class PlayerInfoScreen extends CloseableScreen {
                                 text.setY(rankingY);
 
                                 String date = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC).format(Instant.ofEpochSecond(namedRanking.ranking().attained()));
-                                Text tooltipText = Text.literal("Quando obteve: " + date + "\nPontos: " + points(namedRanking.ranking())).formatted(Formatting.GRAY);
+                                Text tooltipText = Text.literal("Testado: " + date + "\nPontos: " + points(namedRanking.ranking())).formatted(Formatting.GRAY);
                                 text.setTooltip(Tooltip.of(tooltipText));
 
                                 textWidgets.add(text);
