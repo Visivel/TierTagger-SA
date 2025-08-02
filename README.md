@@ -27,4 +27,4 @@ Terceira pagina:
 
 ## Todo:
 > Mostrar aposentados\
-> Corrigir o bgl de pesquisa caso player n exista
+> ~~Corrigir o bgl de pesquisa caso player n exista~~
