@@ -1,8 +1,30 @@
-# Tier Tagger
-A gorgeous minecraft fabric mod which displays everyone's tier from the Vanilla Pvp Tierlist in game like this: "Ht1 | Ooh_Netiyiy"
+# Tier Tagger SA
+Um fork do [TierTagger](https://github.com/mctiers-dev/TierTagger) para tierlists brasileiras, incluindo traducao para o Portugues
 
-Very smol but very useful mod; you'll likey likey :)
+## **ESSE MOD EXIGE QUE VOCE USE O MOD [UKULIB](https://modrinth.com/mod/ukulib)**
 
-Todo:\
+### Exemplos de como deve ficar no mod:
+
+Exemplo 1: \
+![showcase1](/images/image.png)
+
+Exemplo + Comando no chat: \
+![showcase2](/images/image2.png)
+
+Menu principal dentro do [Mod Menu](https://modrinth.com/mod/modmenu/):
+
+![showcase3](/images/image3.png)
+
+Segunda pagina:
+
+![showcase4](/images/image4.png)
+
+Terceira pagina:
+
+![showcase5](/images/image5.png)
+
+
+
+## Todo:
 > Mostrar aposentados\
 > Corrigir o bgl de pesquisa caso player n exista
