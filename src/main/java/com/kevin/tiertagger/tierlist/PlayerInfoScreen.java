@@ -6,12 +6,12 @@ import com.kevin.tiertagger.model.GameMode;
 import com.kevin.tiertagger.model.PlayerInfo;
 import lombok.Setter;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextWidget;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.texture.TextureManager;
@@ -98,22 +98,22 @@ public class PlayerInfoScreen extends CloseableScreen {
         }
 
         String name = this.info == null ? this.player : this.info.name();
-        context.drawCenteredTextWithShadow(this.textRenderer, name + "'s profile", this.width / 2, 20, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(this.textRenderer, "Perfil do " + name, this.width / 2, 20, 0xFFFFFF);
 
         if (this.texture != null && this.info != null) {
-            context.drawTexture(RenderLayer::getGuiTextured, texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144, 60, 144);
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, texture, this.width / 2 - 65, (this.height - 144) / 2, 0, 0, 60, 144, 60, 144);
 
             int rankingHeight = this.info.rankings().size() * 10;
-            int infoHeight = 56; // 4 lines of text (10 px tall) + 6 px padding
+            int infoHeight = 56;
             int startY = (this.height - infoHeight - rankingHeight) / 2;
 
-            context.drawTextWithShadow(this.textRenderer, getRegionText(this.info), this.width / 2 + 5, startY, 0xFFFFFF);
-            context.drawTextWithShadow(this.textRenderer, getPointsText(this.info), this.width / 2 + 5, startY + 15, 0xFFFFFF);
-            context.drawTextWithShadow(this.textRenderer, getRankText(this.info), this.width / 2 + 5, startY + 30, 0xFFFFFF);
-            context.drawTextWithShadow(this.textRenderer, "Rankings:", this.width / 2 + 5, startY + 45, 0xFFFFFF);
+            context.drawTextWithShadow(this.textRenderer, getRegionText(this.info), this.width / 2 + 5, startY, 0xFFFFFFFF);
+            context.drawTextWithShadow(this.textRenderer, getPointsText(this.info), this.width / 2 + 5, startY + 15, 0xFFFFFFFF);
+            context.drawTextWithShadow(this.textRenderer, getRankText(this.info), this.width / 2 + 5, startY + 30, 0xFFFFFFFF);
+            context.drawTextWithShadow(this.textRenderer, "Rankings:", this.width / 2 + 5, startY + 45, 0xFFFFFFFF);
         } else {
-            String text = this.everythingIsAwesome ? "Carregando..." : "Jogador nao encontrado";
-            context.drawCenteredTextWithShadow(this.textRenderer, text, this.width / 2, this.height / 2, 0xFFFFFF);
+            String text = this.everythingIsAwesome ? "Carregando..." : "Player nao encontrado";
+            context.drawCenteredTextWithShadow(this.textRenderer, text, this.width / 2, this.height / 2, 0xFFFFFFFF);
         }
     }
 
@@ -132,7 +132,7 @@ public class PlayerInfoScreen extends CloseableScreen {
             if (res.statusCode() == 200) {
                 try {
                     NativeImage image = NativeImage.read(res.body());
-                    texManager.registerTexture(tex, new NativeImageBackedTexture(tex::toString, image));
+                    texManager.registerTexture(tex, new NativeImageBackedTexture(() -> "player_" + username, image));
                 } catch (IOException e) {
                     TierTagger.getLogger().error("Failed to register head texture", e);
                 }
@@ -182,7 +182,7 @@ public class PlayerInfoScreen extends CloseableScreen {
         PlayerInfo.PointInfo pointInfo = info.getPointInfo();
 
         return Text.empty()
-                .append(Text.literal("Pontuacao: "))
+                .append(Text.literal("Pontos: "))
                 .append(Text.literal(info.points() + " ").styled(s -> s.withColor(pointInfo.getColor())))
                 .append(Text.literal("(" + pointInfo.getTitle() + ")").styled(s -> s.withColor(pointInfo.getAccentColor())));
     }
@@ -218,3 +218,4 @@ public class PlayerInfoScreen extends CloseableScreen {
         };
     }
 }
+
